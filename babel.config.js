@@ -1,3 +1,3 @@
-const { createConfig } = require('@openedx/frontend-base/tools');
+const { createConfig } = require('@openedx/frontend-build');
 
 module.exports = createConfig('babel');

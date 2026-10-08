@@ -1,18 +1,14 @@
 {
-  "extends": "@openedx/frontend-base/tools/tsconfig.json",
+  "extends": "@edx/typescript-config",
   "compilerOptions": {
     "rootDir": ".",
     "outDir": "dist",
-    "paths": {
-      "@src/*": ["./src/*"]
-    }
+    "allowJs": true
   },
   "include": [
     "src/**/*",
-    "app.d.ts",
     "babel.config.js",
-    "eslint.config.js",
     "jest.config.js",
-    "site.config.*.tsx",
-  ],
+    ".eslintrc.js"
+  ]
 }
