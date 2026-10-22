@@ -1,5 +1,5 @@
 {
-  "extends": "@edx/typescript-config",
+  "extends": "@openedx/frontend-base/tools/tsconfig.json",
   "compilerOptions": {
     "rootDir": ".",
     "outDir": "dist",
