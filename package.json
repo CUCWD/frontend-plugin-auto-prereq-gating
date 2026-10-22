@@ -1,8 +1,8 @@
 {
   "name": "@CUCWD/frontend-plugin-auto-prereq-gating",
-  "version": "0.0.0-dev",
+  "version": "0.2.0",
   "packageManager": "npm@11.12.1",
-  "description": "Frontend plugin for automatic prerequisite gating in Open edX.",
+  "description": "Frontend plugin for auto-configuring subsection prerequisite gating from the Studio course outline (Ulmo).",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/CUCWD/frontend-plugin-auto-prereq-gating.git"
@@ -23,7 +23,7 @@
     "lint": "fedx-scripts eslint --ext .js,.jsx,.ts,.tsx src",
     "test": "fedx-scripts jest --coverage --passWithNoTests"
   },
-  "author": "Open edX",
+  "author": "CUCWD",
   "license": "AGPL-3.0",
   "homepage": "https://github.com/CUCWD/frontend-plugin-auto-prereq-gating#readme",
   "publishConfig": {
@@ -35,8 +35,8 @@
   "devDependencies": {
     "@edx/browserslist-config": "^1.5.0",
     "@edx/frontend-platform": "^8.4.0",
-    "@edx/typescript-config": "^1.0.1",
     "@openedx/frontend-build": "^14.6.2",
+    "@openedx/frontend-base": "^2.0.0-alpha",
     "@openedx/paragon": "^23",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
@@ -45,12 +45,17 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "typescript": "^5.6.3"
   },
   "peerDependencies": {
+    "@openedx/frontend-base": "^2.0.0-alpha || 0.0.0-dev",
     "@edx/frontend-platform": "^8.4.0",
     "@openedx/paragon": "^23",
+    "@tanstack/react-query": "^5",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "react-router": "^6",
+    "react-router-dom": "^6"
   }
 }
