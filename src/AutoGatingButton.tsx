@@ -1,67 +1,146 @@
-import React, { useState } from 'react';
-import { ActionRow, Button, ModalDialog } from '@openedx/paragon';
-import { getConfig } from '@edx/frontend-platform';
+import React, { useEffect, useRef, useState } from 'react';
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
+import { Button, Spinner } from '@openedx/paragon';
 
-const AutoGatingButton = () => {
-  const [status, setStatus] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+type OperationStatus = 'idle' | 'running' | 'success' | 'error';
 
-  const handleClick = () => setIsConfirmOpen(true);
+interface AutoGatingButtonProps {
+  courseId?: string;
+}
 
-  const configureGating = async () => {
-    setIsConfirmOpen(false);
-    const courseMatch = window.location.pathname.match(/\/course\/([^/]+)/);
-    if (!courseMatch) {
-      setStatus('Could not determine the current course.');
+/**
+ * Adds sequential prerequisite gating to every subsection in the course.
+ * The Ulmo course outline slot passes courseId directly as a prop.
+ */
+const AutoGatingButton = ({ courseId }: AutoGatingButtonProps) => {
+  const [gatingEnabled, setGatingEnabled] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [opStatus, setOpStatus] = useState<OperationStatus>('idle');
+  const [opMessage, setOpMessage] = useState('');
+  const resetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    let isCurrentRequest = true;
+
+    setGatingEnabled(false);
+    if (!courseId) {
+      setSettingsLoading(false);
+      return () => {
+        isCurrentRequest = false;
+      };
+    }
+
+    setSettingsLoading(true);
+    getAuthenticatedHttpClient()
+      .get(`/api/contentstore/v0/advanced_settings/${courseId}/`)
+      .then(({ data }) => {
+        if (!isCurrentRequest) {
+          return;
+        }
+        const setting = data.enable_subsection_gating;
+        setGatingEnabled(!!(setting && setting.value === true));
+      })
+      .catch(() => {
+        if (isCurrentRequest) {
+          setGatingEnabled(false);
+        }
+      })
+      .finally(() => {
+        if (isCurrentRequest) {
+          setSettingsLoading(false);
+        }
+      });
+
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [courseId]);
+
+  useEffect(() => () => {
+    if (resetTimeout.current) {
+      clearTimeout(resetTimeout.current);
+    }
+  }, []);
+
+  if (settingsLoading || !gatingEnabled) {
+    return null;
+  }
+
+  const resetOperationStatusAfter = (duration: number) => {
+    if (resetTimeout.current) {
+      clearTimeout(resetTimeout.current);
+    }
+    resetTimeout.current = setTimeout(() => {
+      setOpStatus('idle');
+      setOpMessage('');
+      resetTimeout.current = null;
+    }, duration);
+  };
+
+  const handleClick = async () => {
+    // Native confirmation is the requested lightweight Studio admin flow.
+    // eslint-disable-next-line no-alert
+    const confirmed = window.confirm(
+      'Auto-Setup Prerequisite Gating\n\n'
+      + 'Every subsection (except the first) will be set to require 100% '
+      + 'completion of the previous one, with a 0% minimum score.\n\n'
+      + 'Existing prerequisite settings will be overwritten. Continue?',
+    );
+    if (!confirmed || !courseId) {
       return;
     }
 
-    setIsLoading(true);
-    setStatus('');
+    if (resetTimeout.current) {
+      clearTimeout(resetTimeout.current);
+    }
+    setOpStatus('running');
+    setOpMessage('');
+
     try {
-      const { data } = await getAuthenticatedHttpClient().post(
-        `${getConfig().STUDIO_BASE_URL}/auto_prereq_gating/configure/`,
-        { course_key: decodeURIComponent(courseMatch[1]) },
-      );
-      setStatus(`Configured ${data.gates_configured} prerequisite gates.`);
+      const { data } = await getAuthenticatedHttpClient()
+        .post(`/auto_prereq_gating/setup/${encodeURIComponent(courseId)}/`);
+
+      if (data.success) {
+        setOpStatus('success');
+        setOpMessage(`✓ ${data.gating_configured} of ${data.total_subsections} subsections gated`);
+        resetOperationStatusAfter(4000);
+      } else {
+        setOpStatus('error');
+        setOpMessage(data.error || 'Unknown error');
+        resetOperationStatusAfter(5000);
+      }
     } catch (error) {
       const responseError = error as { response?: { data?: { error?: string } } };
-      setStatus(responseError.response?.data?.error || 'Could not configure prerequisite gating.');
-    } finally {
-      setIsLoading(false);
+      setOpStatus('error');
+      setOpMessage(responseError.response?.data?.error || 'Network error');
+      resetOperationStatusAfter(5000);
     }
   };
 
+  const variantMap: Record<OperationStatus, 'tertiary' | 'success' | 'danger'> = {
+    idle: 'tertiary',
+    running: 'tertiary',
+    success: 'success',
+    error: 'danger',
+  };
+
   return (
-    <>
-      <Button variant="primary" onClick={handleClick} disabled={isLoading}>
-        {isLoading ? 'Setting up gating…' : 'Auto-Setup Gating'}
-      </Button>
-      {status && <span className="small ml-2" role="status" aria-live="polite">{status}</span>}
-      <ModalDialog
-        title="Set up prerequisite gating?"
-        isOpen={isConfirmOpen}
-        onClose={() => setIsConfirmOpen(false)}
-        hasCloseButton
-        isOverflowVisible={false}
-      >
-        <ModalDialog.Header>
-          <ModalDialog.Title>Set up prerequisite gating?</ModalDialog.Title>
-        </ModalDialog.Header>
-        <ModalDialog.Body>
-          This replaces prerequisite settings on the course subsections with a
-          sequential chain requiring 100% completion of the previous subsection.
-        </ModalDialog.Body>
-        <ModalDialog.Footer>
-          <ActionRow>
-            <ModalDialog.CloseButton variant="tertiary">Cancel</ModalDialog.CloseButton>
-            <Button onClick={configureGating}>Apply gating</Button>
-          </ActionRow>
-        </ModalDialog.Footer>
-      </ModalDialog>
-    </>
+    <Button
+      variant={variantMap[opStatus]}
+      size="sm"
+      onClick={handleClick}
+      disabled={opStatus === 'running'}
+      className="mr-2"
+      title="Sets each subsection to require 100% completion of the previous one."
+    >
+      {opStatus === 'running' && (
+        <Spinner animation="border" size="sm" className="mr-1" screenReaderText="Configuring" />
+      )}
+      {opStatus === 'running' && 'Configuring…'}
+      {opStatus === 'success' && opMessage}
+      {opStatus === 'error' && `✗ ${opMessage}`}
+      {opStatus === 'idle' && 'Auto-Setup Prerequisite Gating'}
+    </Button>
   );
 };
 
