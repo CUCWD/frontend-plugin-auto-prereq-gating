@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
+import { getConfig } from '@edx/frontend-platform';
 import { Button, Spinner } from '@openedx/paragon';
 
 type OperationStatus = 'idle' | 'running' | 'success' | 'error';
@@ -32,7 +33,7 @@ const AutoGatingButton = ({ courseId }: AutoGatingButtonProps) => {
 
     setSettingsLoading(true);
     getAuthenticatedHttpClient()
-      .get(`/api/contentstore/v0/advanced_settings/${courseId}/`)
+      .get(`${getConfig().STUDIO_BASE_URL}/api/contentstore/v0/advanced_settings/${courseId}`)
       .then(({ data }) => {
         if (!isCurrentRequest) {
           return;
@@ -98,7 +99,7 @@ const AutoGatingButton = ({ courseId }: AutoGatingButtonProps) => {
 
     try {
       const { data } = await getAuthenticatedHttpClient()
-        .post(`/auto_prereq_gating/setup/${encodeURIComponent(courseId)}/`);
+        .post(`${getConfig().STUDIO_BASE_URL}/auto_prereq_gating/setup/${encodeURIComponent(courseId)}/`);
 
       if (data.success) {
         setOpStatus('success');
