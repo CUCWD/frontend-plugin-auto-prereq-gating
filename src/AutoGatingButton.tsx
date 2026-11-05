@@ -34,7 +34,7 @@ const AutoGatingButton = ({ courseId }: AutoGatingButtonProps) => {
     setSettingsLoading(true);
     getAuthenticatedHttpClient()
       .get(`${getConfig().STUDIO_BASE_URL}/api/contentstore/v0/advanced_settings/${courseId}`)
-      .then(({ data }) => {
+      .then(({ data }: { data: { enable_subsection_gating?: { value?: boolean } } }) => {
         if (!isCurrentRequest) {
           return;
         }
