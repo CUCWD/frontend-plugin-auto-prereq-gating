@@ -1,4 +1,5 @@
 import React from 'react';
+import '@testing-library/jest-dom';
 import {
   act,
   fireEvent,
@@ -8,6 +9,10 @@ import {
 } from '@testing-library/react';
 import { getAuthenticatedHttpClient } from '@edx/frontend-platform/auth';
 import AutoGatingButton from './AutoGatingButton';
+
+jest.mock('@edx/frontend-platform', () => ({
+  getConfig: () => ({ STUDIO_BASE_URL: 'http://studio.example.test' }),
+}));
 
 jest.mock('@edx/frontend-platform/auth', () => ({
   getAuthenticatedHttpClient: jest.fn(),
@@ -76,7 +81,7 @@ describe('AutoGatingButton', () => {
     const { container } = render(<AutoGatingButton courseId="course-v1:org+course+run" />);
 
     await waitFor(() => expect(get).toHaveBeenCalledWith(
-      '/api/contentstore/v0/advanced_settings/course-v1:org+course+run/',
+      'http://studio.example.test/api/contentstore/v0/advanced_settings/course-v1:org+course+run',
     ));
     await act(async () => {});
 
@@ -128,7 +133,7 @@ describe('AutoGatingButton', () => {
     const runningButton = screen.getByRole('button', { name: /Configuring/ });
     expect(runningButton).toBeDisabled();
     expect(runningButton.querySelector('.spinner-border')).toBeInTheDocument();
-    expect(post).toHaveBeenCalledWith('/auto_prereq_gating/setup/course-v1%3Aorg%2Bcourse%2Brun/');
+    expect(post).toHaveBeenCalledWith('http://studio.example.test/auto_prereq_gating/setup/course-v1%3Aorg%2Bcourse%2Brun/');
 
     await act(async () => {
       setupRequest.resolve({
