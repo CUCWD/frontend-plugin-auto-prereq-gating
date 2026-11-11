@@ -1,3 +1,4 @@
+/* eslint-disable max-len, react/button-has-type */
 import React from 'react';
 import '@testing-library/jest-dom';
 import {
@@ -18,27 +19,19 @@ jest.mock('@edx/frontend-platform/auth', () => ({
   getAuthenticatedHttpClient: jest.fn(),
 }));
 
-jest.mock('@openedx/paragon', () => {
-  const ReactModule = jest.requireActual('react');
-  return {
-    Button: ({
-      children,
-      variant,
-      size,
-      ...props
-    }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
-      variant: string;
-      size: string;
-    }) => ReactModule.createElement('button', { ...props, 'data-variant': variant, 'data-size': size }, children),
-    Spinner: ({ screenReaderText, ...props }: React.HTMLAttributes<HTMLSpanElement> & {
-      screenReaderText: string;
-    }) => ReactModule.createElement('span', {
-      ...props,
-      className: `spinner-border ${props.className || ''}`,
-      'aria-label': screenReaderText,
-    }),
-  };
-});
+jest.mock('@openedx/paragon', () => ({
+  Button: ({
+    children, variant, size, ...props
+  }: any) => <button {...props} data-variant={variant} data-size={size}>{children}</button>,
+  Spinner: ({ screenReaderText, ...props }: any) => <span {...props} className={`spinner-border ${props.className || ''}`} aria-label={screenReaderText} />,
+}));
+
+jest.mock('./GatingConfigModal', () => ({
+  __esModule: true,
+  default: ({
+    isOpen, onClose, onConfirm, isSubmitting,
+  }: any) => (isOpen ? <div><button onClick={onClose} disabled={isSubmitting}>Cancel</button><button onClick={() => onConfirm({ prereqMinCompletion: 100, prereqMinScore: 80 })} disabled={isSubmitting}>Apply Gating</button></div> : null),
+}));
 
 const get = jest.fn();
 const post = jest.fn();
@@ -64,7 +57,6 @@ const setGatingSetting = (value: unknown) => {
 beforeEach(() => {
   jest.clearAllMocks();
   (getAuthenticatedHttpClient as jest.Mock).mockReturnValue({ get, post });
-  jest.spyOn(window, 'confirm').mockReturnValue(true);
 });
 
 afterEach(() => {
@@ -110,13 +102,13 @@ describe('AutoGatingButton', () => {
 
   it('does not call the setup API when confirmation is cancelled', async () => {
     setGatingSetting({ value: true });
-    jest.spyOn(window, 'confirm').mockReturnValue(false);
     render(<AutoGatingButton courseId="course-v1:org+course+run" />);
     const button = await screen.findByRole('button', { name: 'Auto-Setup Prerequisite Gating' });
 
     fireEvent.click(button);
 
-    expect(window.confirm).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByText('Cancel'));
+    expect(screen.queryByText('Apply Gating')).not.toBeInTheDocument();
     expect(post).not.toHaveBeenCalled();
   });
 
@@ -129,11 +121,14 @@ describe('AutoGatingButton', () => {
     jest.useFakeTimers();
 
     fireEvent.click(button);
+    fireEvent.click(screen.getByText('Apply Gating'));
 
     const runningButton = screen.getByRole('button', { name: /Configuring/ });
     expect(runningButton).toBeDisabled();
+    expect(screen.getByText('Cancel')).toBeDisabled();
+    expect(screen.getByText('Apply Gating')).toBeDisabled();
     expect(runningButton.querySelector('.spinner-border')).toBeInTheDocument();
-    expect(post).toHaveBeenCalledWith('http://studio.example.test/auto_prereq_gating/setup/course-v1%3Aorg%2Bcourse%2Brun/');
+    expect(post).toHaveBeenCalledWith('http://studio.example.test/auto_prereq_gating/setup/course-v1%3Aorg%2Bcourse%2Brun/', { prereqMinCompletion: 100, prereqMinScore: 80 });
 
     await act(async () => {
       setupRequest.resolve({
@@ -142,6 +137,7 @@ describe('AutoGatingButton', () => {
     });
 
     expect(screen.getByRole('button', { name: '✓ 3 of 4 subsections gated' })).toBeInTheDocument();
+    expect(screen.queryByText('Apply Gating')).not.toBeInTheDocument();
     await act(async () => {
       jest.advanceTimersByTime(3999);
     });
@@ -158,6 +154,7 @@ describe('AutoGatingButton', () => {
     post.mockReturnValue(setupRequest.promise);
     render(<AutoGatingButton courseId="course-v1:org+course+run" />);
     fireEvent.click(await screen.findByRole('button', { name: 'Auto-Setup Prerequisite Gating' }));
+    fireEvent.click(screen.getByText('Apply Gating'));
     jest.useFakeTimers();
 
     await act(async () => {
@@ -165,6 +162,7 @@ describe('AutoGatingButton', () => {
     });
 
     expect(screen.getByRole('button', { name: '✗ Could not configure gating' })).toBeInTheDocument();
+    expect(screen.queryByText('Apply Gating')).not.toBeInTheDocument();
     await act(async () => {
       jest.advanceTimersByTime(4999);
     });
