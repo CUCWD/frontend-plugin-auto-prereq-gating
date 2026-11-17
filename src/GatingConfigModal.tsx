@@ -5,7 +5,7 @@ import {
   Button,
   Form,
 } from '@openedx/paragon';
- 
+
 /**
  * GatingConfigModal
  *
@@ -38,13 +38,13 @@ const GatingConfigModal = ({
 }: Props) => {
   const [prereqMinCompletion, setPrereqMinCompletion] = useState(100);
   const [prereqMinScore, setPrereqMinScore] = useState(0);
- 
+
   const handleConfirm = () => {
     onConfirm({ prereqMinCompletion, prereqMinScore });
   };
- 
+
   const clamp = (value: string) => Math.min(100, Math.max(0, Math.trunc(Number(value) || 0)));
- 
+
   return (
     <AlertModal
       title="Auto-Setup Prerequisite Gating"
@@ -80,45 +80,46 @@ const GatingConfigModal = ({
         .gating-config-modal .pgn__modal-close-container button { color: white; }
         .gating-config-modal .gating-percent-input { width: 100px; }
         .gating-config-modal .gating-note { background: #edf5fb; border-left: 3px solid #0875c1; padding: 16px; }
-      `}</style>
+      `}
+      </style>
       <p>
         Configure how subsection prerequisites are applied across all sections
         in this course. Each subsection will require the previous one to meet
         these thresholds before unlocking.
       </p>
- 
+
       <Form>
         <Form.Group controlId="gating-min-completion">
           <Form.Label>Minimum Completion</Form.Label>
           <div className="d-flex align-items-center">
-          <Form.Control
-            className="gating-percent-input"
-            type="number"
-            step={1}
-            min={0}
-            max={100}
-            value={prereqMinCompletion}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPrereqMinCompletion(clamp(e.target.value))}
-          />
+            <Form.Control
+              className="gating-percent-input"
+              type="number"
+              step={1}
+              min={0}
+              max={100}
+              value={prereqMinCompletion}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPrereqMinCompletion(clamp(e.target.value))}
+            />
             <span className="ml-2" aria-hidden="true">%</span>
           </div>
           <Form.Text>
             How much of the previous subsection must be completed before the next unlocks (default: 100).
           </Form.Text>
         </Form.Group>
- 
+
         <Form.Group controlId="gating-min-score">
           <Form.Label>Minimum Score</Form.Label>
           <div className="d-flex align-items-center">
-          <Form.Control
-            className="gating-percent-input"
-            type="number"
-            step={1}
-            min={0}
-            max={100}
-            value={prereqMinScore}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPrereqMinScore(clamp(e.target.value))}
-          />
+            <Form.Control
+              className="gating-percent-input"
+              type="number"
+              step={1}
+              min={0}
+              max={100}
+              value={prereqMinScore}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPrereqMinScore(clamp(e.target.value))}
+            />
             <span className="ml-2" aria-hidden="true">%</span>
           </div>
           <Form.Text>
@@ -132,5 +133,5 @@ const GatingConfigModal = ({
     </AlertModal>
   );
 };
- 
+
 export default GatingConfigModal;

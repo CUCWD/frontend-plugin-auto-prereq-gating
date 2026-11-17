@@ -12,15 +12,15 @@ jest.mock('@openedx/paragon', () => {
   );
   const Form = ({ children }: any) => <form>{children}</form>;
   Form.Group = Group;
-  Form.Label = function ({ children }: any) {
+  Form.Label = function Label({ children }: any) {
     const controlId = ReactModule.useContext(FormContext);
     return <label htmlFor={controlId}>{children}</label>;
   };
-  Form.Control = function (props: any) {
+  Form.Control = function Control(props: any) {
     const controlId = ReactModule.useContext(FormContext);
     return <input {...props} id={controlId} />;
   };
-  Form.Text = function ({ children }: any) {
+  Form.Text = function Text({ children }: any) {
     return <small>{children}</small>;
   };
   return {
