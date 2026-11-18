@@ -11,7 +11,7 @@ jobs:
     name: backend tests (companion repository)
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         repository: CUCWD/openedx-auto-prereq-gating
     - uses: actions/setup-python@v5
