@@ -1,6 +1,6 @@
 {
   "name": "@cucwd/frontend-plugin-auto-prereq-gating",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "packageManager": "npm@11.12.1",
   "description": "Frontend plugin for auto-configuring subsection prerequisite gating from the Studio course outline (Ulmo).",
   "repository": {
