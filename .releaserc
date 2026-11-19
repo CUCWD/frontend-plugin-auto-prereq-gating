@@ -1,8 +1,6 @@
 {
   "branches": [
-    "+([0-9])?(.{+([0-9]),x}).x",
-    { "name": "stable", "channel": "latest" },
-    { "name": "develop/ulmo.master", "prerelease": "alpha", "channel": "alpha" }
+    "develop/ulmo.master"
   ],
   "tagFormat": "v${version}",
   "plugins": [
