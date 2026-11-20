@@ -29,8 +29,8 @@ jest.mock('@openedx/paragon', () => ({
 jest.mock('./GatingConfigModal', () => ({
   __esModule: true,
   default: ({
-    isOpen, onClose, onConfirm, isSubmitting,
-  }: any) => (isOpen ? <div><button onClick={onClose} disabled={isSubmitting}>Cancel</button><button onClick={() => onConfirm({ prereqMinCompletion: 100, prereqMinScore: 80 })} disabled={isSubmitting}>Apply Gating</button></div> : null),
+    isOpen, onClose, onConfirm, onRemove, isSubmitting,
+  }: any) => (isOpen ? <div><button onClick={onClose} disabled={isSubmitting}>Cancel</button><button onClick={onRemove} disabled={isSubmitting}>Remove All Gating</button><button onClick={() => onConfirm({ prereqMinCompletion: 100, prereqMinScore: 80 })} disabled={isSubmitting}>Apply Gating</button></div> : null),
 }));
 
 const get = jest.fn();
@@ -116,7 +116,8 @@ describe('AutoGatingButton', () => {
     setGatingSetting({ value: true });
     const setupRequest = deferred<{ data: unknown }>();
     post.mockReturnValue(setupRequest.promise);
-    render(<AutoGatingButton courseId="course-v1:org+course+run" />);
+    const refreshCourseOutline = jest.fn();
+    render(<AutoGatingButton courseId="course-v1:org+course+run" refreshCourseOutline={refreshCourseOutline} />);
     const button = await screen.findByRole('button', { name: 'Auto-Setup Prerequisite Gating' });
     jest.useFakeTimers();
 
@@ -136,6 +137,7 @@ describe('AutoGatingButton', () => {
       });
     });
 
+    expect(refreshCourseOutline).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('button', { name: '✓ 3 of 4 subsections gated' })).toBeInTheDocument();
     expect(screen.queryByText('Apply Gating')).not.toBeInTheDocument();
     await act(async () => {
@@ -172,4 +174,33 @@ describe('AutoGatingButton', () => {
     });
     expect(screen.getByRole('button', { name: 'Auto-Setup Prerequisite Gating' })).toBeInTheDocument();
   });
+});
+
+it('refreshes the outline after removal succeeds', async () => {
+  setGatingSetting({ value: true });
+  const refreshCourseOutline = jest.fn();
+  post.mockResolvedValue({ data: { success: true, gating_removed: 2, total_subsections: 3 } });
+  render(<AutoGatingButton courseId="course-v1:org+course+run" refreshCourseOutline={refreshCourseOutline} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Auto-Setup Prerequisite Gating' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Remove All Gating' }));
+  await waitFor(() => expect(refreshCourseOutline).toHaveBeenCalledTimes(1));
+  expect(post).toHaveBeenCalledWith('http://studio.example.test/auto_prereq_gating/remove/course-v1%3Aorg%2Bcourse%2Brun/');
+});
+
+it.each([
+  ['apply', 'Apply Gating', '✓ 1 of 2 subsections gated', { success: true, gating_configured: 1, total_subsections: 2 }],
+  ['remove', 'Remove All Gating', '✓ Gating removed from 1 of 2 subsections', { success: true, gating_removed: 1, total_subsections: 2 }],
+])('waits for the outline refresh before reporting %s success', async (_operation, action, message, data) => {
+  setGatingSetting({ value: true });
+  const refresh = deferred<void>();
+  const refreshCourseOutline = jest.fn(() => refresh.promise);
+  post.mockResolvedValue({ data });
+  render(<AutoGatingButton courseId="course-v1:org+course+run" refreshCourseOutline={refreshCourseOutline} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Auto-Setup Prerequisite Gating' }));
+  fireEvent.click(screen.getByText(action));
+  await waitFor(() => expect(refreshCourseOutline).toHaveBeenCalledTimes(1));
+  expect(screen.queryByText(message)).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Configuring|Removing/ })).toBeDisabled();
+  await act(async () => { refresh.resolve(); });
+  expect(screen.getByText(message)).toBeInTheDocument();
 });

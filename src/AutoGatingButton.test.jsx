@@ -56,8 +56,17 @@ test.each([
 ])('shows %s message after applying gating', async (result, response, message) => {
   mockGet.mockResolvedValue({ data: { enable_subsection_gating: { value: true } } });
   if (result === 'success') { mockPost.mockResolvedValue(response); } else { mockPost.mockRejectedValue(response); }
-  render(<AutoGatingButton courseId={courseId} />);
+  render(<AutoGatingButton courseId={courseId} refreshCourseOutline={jest.fn()} />);
   fireEvent.click(await screen.findByText('Auto-Setup Prerequisite Gating'));
   fireEvent.click(screen.getByText('Apply Gating'));
   expect(await screen.findByText(message)).toBeInTheDocument();
+});
+
+test('asks for a manual refresh when the host cannot update the outline', async () => {
+  mockGet.mockResolvedValue({ data: { enable_subsection_gating: { value: true } } });
+  mockPost.mockResolvedValue({ data: { success: true, gating_configured: 1, total_subsections: 2 } });
+  render(<AutoGatingButton courseId={courseId} />);
+  fireEvent.click(await screen.findByText('Auto-Setup Prerequisite Gating'));
+  fireEvent.click(screen.getByText('Apply Gating'));
+  expect(await screen.findByText(/refresh the page to update the outline/)).toBeInTheDocument();
 });
