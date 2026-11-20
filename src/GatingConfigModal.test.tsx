@@ -63,3 +63,22 @@ describe('GatingConfigModal', () => {
     expect(screen.getByLabelText(/minimum score/i)).toHaveValue(0);
   });
 });
+
+it('confirms removal only after the instructor accepts', () => {
+  const onRemove = jest.fn();
+  render(<GatingConfigModal {...props} onRemove={onRemove} />);
+  fireEvent.click(screen.getByText('Remove All Gating'));
+  expect(screen.getByText(/including prerequisites configured manually/i)).toBeInTheDocument();
+  fireEvent.click(screen.getByText('Cancel'));
+  expect(onRemove).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByText('Remove All Gating'));
+  fireEvent.click(screen.getByText('Remove All Gating'));
+  expect(onRemove).toHaveBeenCalledTimes(1);
+});
+
+it('orders the modal actions as cancel, remove, and apply', () => {
+  render(<GatingConfigModal {...props} />);
+  expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
+    'Cancel', 'Remove All Gating', 'Apply Gating',
+  ]);
+});

@@ -129,3 +129,10 @@ License
 *******
 
 This project is licensed under the GNU Affero General Public License v3.0.
+
+Removing prerequisite gating
+----------------------------
+
+In the configuration modal, select **Remove All Gating** and confirm.
+This removes all subsection prerequisites, including manually configured
+ones, without changing the subsection gating advanced setting.

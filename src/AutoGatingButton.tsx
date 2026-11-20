@@ -8,17 +8,19 @@ type OperationStatus = 'idle' | 'running' | 'success' | 'error';
 
 interface AutoGatingButtonProps {
   courseId?: string;
+  refreshCourseOutline?: () => void | Promise<void>;
 }
 
 /**
  * Adds sequential prerequisite gating to every subsection in the course.
  * The Ulmo course outline slot passes courseId directly as a prop.
  */
-const AutoGatingButton = ({ courseId }: AutoGatingButtonProps) => {
+const AutoGatingButton = ({ courseId, refreshCourseOutline }: AutoGatingButtonProps) => {
   const [gatingEnabled, setGatingEnabled] = useState(false);
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [opStatus, setOpStatus] = useState<OperationStatus>('idle');
   const [opMessage, setOpMessage] = useState('');
+  const [isRemoving, setIsRemoving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const resetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -80,12 +82,23 @@ const AutoGatingButton = ({ courseId }: AutoGatingButtonProps) => {
     }, duration);
   };
 
+  const refreshOutline = async (): Promise<boolean> => {
+    if (!refreshCourseOutline) { return false; }
+    try {
+      await refreshCourseOutline();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const handleApply = async (config: GatingConfig) => {
     if (!courseId) { return; }
 
     if (resetTimeout.current) {
       clearTimeout(resetTimeout.current);
     }
+    setIsRemoving(false);
     setOpStatus('running');
     setOpMessage('');
 
@@ -94,21 +107,49 @@ const AutoGatingButton = ({ courseId }: AutoGatingButtonProps) => {
         .post(`${getConfig().STUDIO_BASE_URL}/auto_prereq_gating/setup/${encodeURIComponent(courseId)}/`, config);
 
       if (data.success) {
+        const message = `✓ ${data.gating_configured} of ${data.total_subsections} subsections gated`;
+        const refreshed = await refreshOutline();
+        setModalOpen(false);
         setOpStatus('success');
-        setOpMessage(`✓ ${data.gating_configured} of ${data.total_subsections} subsections gated`);
-        resetOperationStatusAfter(4000);
+        setOpMessage(refreshed ? message : `${message} — refresh the page to update the outline`);
+        resetOperationStatusAfter(refreshed ? 4000 : 5000);
       } else {
+        setModalOpen(false);
         setOpStatus('error');
         setOpMessage(data.error || 'Unknown error');
         resetOperationStatusAfter(5000);
       }
     } catch (error) {
+      setModalOpen(false);
       const responseError = error as { response?: { data?: { error?: string } } };
       setOpStatus('error');
       setOpMessage(responseError.response?.data?.error || 'Network error');
       resetOperationStatusAfter(5000);
-    } finally {
+    }
+  };
+
+  const handleRemove = async () => {
+    if (!courseId || opStatus === 'running') { return; }
+    if (resetTimeout.current) { clearTimeout(resetTimeout.current); }
+    setIsRemoving(true);
+    setOpStatus('running');
+    setOpMessage('');
+    try {
+      const { data } = await getAuthenticatedHttpClient()
+        .post(`${getConfig().STUDIO_BASE_URL}/auto_prereq_gating/remove/${encodeURIComponent(courseId)}/`);
+      if (!data.success) { throw new Error(data.error || 'Unknown error'); }
+      const message = `✓ Gating removed from ${data.gating_removed} of ${data.total_subsections} subsections`;
+      const refreshed = await refreshOutline();
       setModalOpen(false);
+      setOpStatus('success');
+      setOpMessage(refreshed ? message : `${message} — refresh the page to update the outline`);
+      resetOperationStatusAfter(refreshed ? 4000 : 5000);
+    } catch (error) {
+      setModalOpen(false);
+      const responseError = error as { response?: { data?: { error?: string } }; message?: string };
+      setOpStatus('error');
+      setOpMessage(responseError.response?.data?.error || responseError.message || 'Network error');
+      resetOperationStatusAfter(5000);
     }
   };
 
@@ -131,12 +172,12 @@ const AutoGatingButton = ({ courseId }: AutoGatingButtonProps) => {
         {opStatus === 'running' && (
         <Spinner animation="border" size="sm" className="mr-1" screenReaderText="Configuring" />
         )}
-        {opStatus === 'running' && 'Configuring…'}
+        {opStatus === 'running' && (isRemoving ? 'Removing…' : 'Configuring…')}
         {opStatus === 'success' && opMessage}
         {opStatus === 'error' && `✗ ${opMessage}`}
         {opStatus === 'idle' && 'Auto-Setup Prerequisite Gating'}
       </Button>
-      <GatingConfigModal isOpen={modalOpen} onClose={() => setModalOpen(false)} onConfirm={handleApply} isSubmitting={opStatus === 'running'} />
+      <GatingConfigModal isOpen={modalOpen} onClose={() => setModalOpen(false)} onConfirm={handleApply} onRemove={handleRemove} isRemoving={isRemoving} isSubmitting={opStatus === 'running'} />
     </>
   );
 };
